@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <Windows.h>
 #include <conio.h>
+#include <string.h>
 
 #pragma warning(disable:4996)
 
@@ -17,11 +18,13 @@ int MID_Y = 10; //중앙 정렬
 struct entity {
 	int x, y;
 	int isMove;
-	int eraseForAfterImage;
 	int entitySizeX, entitySizeY;
+	int hasKey;
+	int hisMapPos;
+	int mapChanged;
 };
 
-int map[MAP_MAXSIZE_Y][MAP_MAXSIZE_X] = { 0, };
+int testMap[MAP_MAXSIZE_Y][MAP_MAXSIZE_X] = { 0, };
 
 int theRoom[MAP_MAXSIZE_Y][MAP_MAXSIZE_X] = {
 	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
@@ -71,13 +74,12 @@ int theRoom[MAP_MAXSIZE_Y][MAP_MAXSIZE_X] = {
 	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
 };
 
+int tempMap[MAP_MAXSIZE_Y][MAP_MAXSIZE_X] = { 0, };
+
 int playerImage[2][1] = {
 	{1},
 	{1}
 };
-
-
-
 
 enum colorName
 {
@@ -97,6 +99,11 @@ enum colorName
 	VIOLET,
 	YELLOW,
 	WHITE,
+};
+enum mapName
+{
+	TESTMAP,
+	THEROOM,
 };
 
 void color(int bgColor, int textColor)
@@ -120,7 +127,7 @@ void CursorView(int show) // 입력 커서 제거
 	SetConsoleCursorInfo(hConsole, &ConsoleCursor);
 }
 
-void printEntity(struct entity *Entity, int isPlayer)
+void printEntity(struct entity* Entity, int isPlayer)
 {
 	for (int i = Entity->entitySizeY - 1; i >= 0; i--)
 	{
@@ -138,8 +145,8 @@ void printEntity(struct entity *Entity, int isPlayer)
 				case 1:
 					color(D_GREEN, GREEN);
 					i == 1 ?
-					puts("US"):
-					puts("ER");
+						puts("US") :
+						puts("ER");
 					break;
 				}
 				//puts("  ");
@@ -147,15 +154,156 @@ void printEntity(struct entity *Entity, int isPlayer)
 		}
 	}
 }
+void playerMoveControl(struct entity* player, int isMove, int nowMap[][MAP_MAXSIZE_X])
+{
 
-void mapBackup(struct entity* Entity, int direction)
+	memcpy(theRoom, nowMap, sizeof(nowMap));
+	switch (isMove)
+	{
+	case 'w':
+		if (player->y > 1 && nowMap[player->y - 2][player->x] != 1)
+		{
+			if (nowMap[player->y - 2][player->x] == 2)
+			{
+				if (player->hasKey == 1)
+				{
+					nowMap[player->y - 2][player->x] = 0;
+					player->y--;
+					player->hasKey = 0;
+				}
+				else
+				{
+					gotoxy((MAP_MAXSIZE_X / 2 - 5 + MID_X) * 2, MAP_MAXSIZE_Y + 1 + MID_Y);
+					color(BLACK, WHITE);
+					puts("열쇠가 필요합니다.");
+				}
+			}
+			else
+				player->y--;
+		}
+		break;
+	case 'a':
+		if (player->x > 0 && (nowMap[player->y][player->x - 1] != 1 && nowMap[player->y - 1][player->x - 1] != 1))
+		{
+			if (nowMap[player->y][player->x - 1] == 2 && nowMap[player->y - 1][player->x - 1] == 2)
+			{
+				if (player->hasKey == 1)
+				{
+					nowMap[player->y - 1][player->x - 1] = 0;
+					nowMap[player->y][player->x - 1] = 0;
+					player->x--;
+					player->hasKey = 0;
+				}
+				else
+				{
+					gotoxy((MAP_MAXSIZE_X / 2 - 5 + MID_X) * 2, MAP_MAXSIZE_Y + 1 + MID_Y);
+					color(BLACK, WHITE);
+					puts("열쇠가 필요합니다.");
+				}
+			}
+			else
+				player->x--;
+		}
+		break;
+	case 's':
+		if (player->y < MAP_MAXSIZE_Y - 1 && nowMap[player->y + 1][player->x] != 1)
+		{
+			if (nowMap[player->y + 1][player->x] == 2)
+			{
+				if (player->hasKey == 1)
+				{
+					nowMap[player->y + 1][player->x] = 0;
+					player->y++;
+					player->hasKey = 0;
+				}
+				else
+				{
+					gotoxy((MAP_MAXSIZE_X / 2 - 5 + MID_X) * 2, MAP_MAXSIZE_Y + 1 + MID_Y);
+					color(BLACK, WHITE);
+					puts("열쇠가 필요합니다.");
+				}
+			}
+			else
+				player->y++;
+		}
+		break;
+	case 'd':
+		if (player->x < MAP_MAXSIZE_X - 1 && (nowMap[player->y][player->x + 1] != 1 && nowMap[player->y - 1][player->x + 1] != 1))
+		{
+			if (nowMap[player->y][player->x + 1] == 2 && nowMap[player->y - 1][player->x + 1] == 2)
+			{
+				if (player->hasKey == 1)
+				{
+					nowMap[player->y - 1][player->x + 1] = 0;
+					nowMap[player->y][player->x + 1] = 0;
+					player->x++;
+					player->hasKey = 0;
+				}
+				else
+				{
+					gotoxy((MAP_MAXSIZE_X / 2 - 5 + MID_X) * 2, MAP_MAXSIZE_Y + 1 + MID_Y);
+					color(BLACK, WHITE);
+					puts("열쇠가 필요합니다.");
+				}
+			}
+			else
+				player->x++;
+		}
+		break;
+	case 27: //esc
+		exit(1); //escape from this game
+	case 'e':
+		player->hasKey = 1;
+		gotoxy((MAP_MAXSIZE_X / 2 - 5 + MID_X) * 2, MAP_MAXSIZE_Y + 1 + MID_Y);
+		color(BLACK, WHITE);
+		puts("                    ");
+		break;
+	case 'f':
+		player->hasKey = 0;
+		break;
+	case 48: //numpad 0
+		player->hisMapPos = TESTMAP;
+		player->mapChanged = TRUE;
+		break;
+	case 49: //numpad 1
+		player->hisMapPos = THEROOM;
+		player->mapChanged = TRUE;
+		break;
+	}
+}
+
+void mapBackup(struct entity* Entity, int direction, int nowMap[][MAP_MAXSIZE_X])
 {
 	for (int i = Entity->entitySizeY - 1; i >= 0; i--)
 	{
 		for (int j = 0; j < Entity->entitySizeX; j++)
 		{
 			gotoxy((Entity->x + j + MID_X) * 2, Entity->y - i + MID_Y);
-			switch (theRoom[Entity->y - i][Entity->x + j])
+			switch (nowMap[Entity->y - i][Entity->x + j])
+			{
+			case 0:
+				color(D_GRAY, GRAY);
+				break;
+			case 1:
+				color(BLACK, BLACK);
+				break;
+			case 2:
+				color(WHITE, WHITE);
+				break;
+			}
+			puts("  ");
+		}
+	}
+}
+void printMap(int nowMap[][MAP_MAXSIZE_X], int col, int row)
+{
+	for (int i = 0; i < row;i++)
+	{
+		for (int j = 0; j < col; j++)
+		{
+			gotoxy((j + MID_X) * 2, i + MID_Y);
+
+			switch (nowMap[i][j])
 			{
 			case 0:
 				color(D_GRAY, GRAY);
@@ -172,7 +320,13 @@ void mapBackup(struct entity* Entity, int direction)
 	}
 }
 
-int fullScreen()
+
+void checkObject()//checking PressurePlate(발판), Items(key, food, etc..), pushingOBJ, etc..
+{
+
+}
+
+void fullScreen()
 {
 	//int width = GetSystemMetrics(SM_CXSCREEN);
 	//int height = GetSystemMetrics(SM_CXSCREEN);
@@ -189,8 +343,11 @@ int fullScreen()
 int main(void)
 {
 	struct entity player;
+	int nowMap[MAP_MAXSIZE_Y][MAP_MAXSIZE_X] = { 0, };
 
-	int hasKey = 0;
+	player.hasKey = 0;
+	player.hisMapPos = THEROOM;
+	player.mapChanged = FALSE;
 
 	fullScreen();
 	Sleep(250);
@@ -202,27 +359,19 @@ int main(void)
 	player.y = (MAP_MAXSIZE_Y - 1) / 2;
 
 
-	for (int i = 0; i < MAP_MAXSIZE_Y;i++)
+	switch (player.hisMapPos)
 	{
-		for (int j = 0; j < MAP_MAXSIZE_X; j++)
-		{
-			gotoxy((j + MID_X) * 2, i + MID_Y);
-
-			switch (theRoom[i][j])
-			{
-			case 0:
-				color(D_GRAY, GRAY);
-				break;
-			case 1:
-				color(BLACK, BLACK);
-				break;
-			case 2:
-				color(WHITE, WHITE);
-				break;
-			}
-			puts("  ");
-		}
+	case TESTMAP:
+		memcpy(nowMap, testMap, sizeof(testMap));
+		break;
+	case THEROOM:
+		memcpy(nowMap, theRoom, sizeof(theRoom));
+		break;
 	}
+
+	printMap(nowMap,
+		MAP_MAXSIZE_X,
+		MAP_MAXSIZE_Y);
 
 	/*player printing*/
 	printEntity(&player, TRUE);
@@ -231,109 +380,34 @@ int main(void)
 		if (kbhit())
 		{
 			player.isMove = getch();
+
 			/*erase player afterImage*/
-			mapBackup(&player, player.isMove);
-			switch (player.isMove)
+			mapBackup(&player, player.isMove, nowMap);
+
+			playerMoveControl(&player, player.isMove, nowMap);
+			if (player.mapChanged == TRUE)
 			{
-			case 'w':
-				if (player.y > 1 && theRoom[player.y - 2][player.x] != 1)
+				color(BLACK, BLACK);
+				system("cls");
+
+				switch (player.hisMapPos)
 				{
-					if (theRoom[player.y - 2][player.x] == 2)
-					{
-						if (hasKey == 1)
-						{
-							theRoom[player.y - 2][player.x] = 0;
-							player.y--;
-						}
-						else
-						{
-							gotoxy((MAP_MAXSIZE_X / 2 - 5 + MID_X) * 2, MAP_MAXSIZE_Y + 1 + MID_Y);
-							color(BLACK, WHITE);
-							puts("열쇠가 필요합니다.");
-						}
-					}
-					else
-						player.y--;
+				case TESTMAP:
+					memcpy(nowMap, testMap, sizeof(testMap));
+					break;
+				case THEROOM:
+					memcpy(nowMap, theRoom, sizeof(theRoom));
+					break;
 				}
-				break;
-			case 'a':
-				if (player.x > 0 && (theRoom[player.y][player.x - 1] != 1 && theRoom[player.y - 1][player.x - 1] != 1))
-				{
-					if (theRoom[player.y][player.x - 1] == 2 && theRoom[player.y - 1][player.x - 1] == 2)
-					{
-						if (hasKey == 1)
-						{
-							theRoom[player.y - 1][player.x - 1] = 0;
-							theRoom[player.y][player.x - 1] = 0;
-							player.x--;
-						}
-						else
-						{
-							gotoxy((MAP_MAXSIZE_X / 2 - 5 + MID_X) * 2, MAP_MAXSIZE_Y + 1 + MID_Y);
-							color(BLACK, WHITE);
-							puts("열쇠가 필요합니다.");
-						}
-					}
-					else
-						player.x--;
-				}
-				break;
-			case 's':
-				if (player.y  < MAP_MAXSIZE_Y -1 && theRoom[player.y + 1][player.x] != 1)
-				{
-					if (theRoom[player.y + 1][player.x] == 2)
-					{
-						if (hasKey == 1)
-						{
-							theRoom[player.y + 1][player.x] = 0;
-							player.y++;
-						}
-						else
-						{
-							gotoxy((MAP_MAXSIZE_X / 2 - 5 + MID_X) * 2, MAP_MAXSIZE_Y + 1 + MID_Y);
-							color(BLACK, WHITE);
-							puts("열쇠가 필요합니다.");
-						}
-					}
-					else
-						player.y++;
-				}
-				break;
-			case 'd':
-				if (player.x  < MAP_MAXSIZE_X -1 && (theRoom[player.y][player.x + 1] != 1 && theRoom[player.y - 1][player.x + 1] != 1))
-				{
-					if (theRoom[player.y][player.x + 1] == 2 && theRoom[player.y - 1][player.x + 1] == 2)
-					{
-						if (hasKey == 1)
-						{
-							theRoom[player.y - 1][player.x + 1] = 0;
-							theRoom[player.y][player.x + 1] = 0;
-							player.x++;
-						}
-						else
-						{
-							gotoxy((MAP_MAXSIZE_X / 2 - 5 + MID_X) * 2, MAP_MAXSIZE_Y + 1 + MID_Y);
-							color(BLACK, WHITE);
-							puts("열쇠가 필요합니다.");
-						}
-					}
-					else
-						player.x++;
-				}
-				break;
-			case 27: //esc
-				return 0;
-			case 'e':
-				hasKey = 1;
-				gotoxy((MAP_MAXSIZE_X / 2 - 5 + MID_X) * 2, MAP_MAXSIZE_Y + 1 + MID_Y);
-				color(BLACK, WHITE);
-				puts("                    ");
-				break;
-			case 'f':
-				hasKey = 0;
-				break;
+
+				printMap(nowMap,
+					MAP_MAXSIZE_X,
+					MAP_MAXSIZE_Y);
+
+				player.mapChanged = FALSE;
 			}
-			/*player printing*/
+
+			/*printing player*/
 			printEntity(&player, TRUE);
 		}
 	}
